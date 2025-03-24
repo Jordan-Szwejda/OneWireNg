@@ -43,6 +43,9 @@
 #elif defined(ARDUINO_ARCH_STM32)
 # include "platform/OneWireNg_ArduinoSTM32.h"
 # define OneWireNg_CurrentPlatform OneWireNg_ArduinoSTM32
+#elif defined(CH32V)
+# include "platform/OneWireNg_CH32V.h"
+# define OneWireNg_CurrentPlatform OneWireNg_CH32V
 #elif defined(PICO_BUILD) || defined(ARDUINO_ARCH_RP2040)
 # if CONFIG_RP2040_PIO_DRIVER
 #  include "platform/OneWireNg_PicoRP2040PIO.h"

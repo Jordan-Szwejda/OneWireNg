@@ -311,7 +311,7 @@ uint8_t OneWireNg::crc8(const void *in, size_t len, uint8_t crc_in)
         0x00, 0x9d, 0x23, 0xbe, 0x46, 0xdb, 0x65, 0xf8,
         0x8c, 0x11, 0xaf, 0x32, 0xca, 0x57, 0xe9, 0x74
     };
-
+	
     while (len--) {
         crc ^= *in_bts++;
 # if (CONFIG_CRC8_ALGO == CRC8_TAB_32)
@@ -325,7 +325,7 @@ uint8_t OneWireNg::crc8(const void *in, size_t len, uint8_t crc_in)
 #else
     crc = OneWireNg::crc<uint8_t, 0x8c>(in, len, crc);
 #endif
-    return crc;
+	return crc;    
 }
 
 #if CONFIG_CRC16_ENABLED

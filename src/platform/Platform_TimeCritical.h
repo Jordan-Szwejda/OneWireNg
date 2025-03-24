@@ -122,6 +122,9 @@ extern tc_t _tc[portNUM_PROCESSORS];
 #elif defined(__MBED__)
 # define timeCriticalEnter() __disable_irq()
 # define timeCriticalExit() __enable_irq()
+#elif defined(CH32V)
+# define timeCriticalEnter()
+# define timeCriticalExit()
 #else
 # ifndef OWNG_TEST
 #  warning "Time critical API unsupported for the target platform. Disabled."

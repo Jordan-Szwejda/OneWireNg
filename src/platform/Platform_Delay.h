@@ -38,6 +38,10 @@ void idf_delayUs(uint32_t us);
 # include <unistd.h>
 # define delayMs(ms) usleep(1000L * (ms))
 # define delayUs(us) usleep(us)
+#elif defined(CH32V)
+#include <debug.h>
+#define delayMs(ms) Delay_Ms(ms)
+#define delayUs(us) Delay_Us(us)
 #else
 # error "Delay API unsupported for the target platform."
 #endif

@@ -158,6 +158,8 @@
 #  define CONFIG_CRC16_ENABLED 0
 # endif
 
+#define CONFIG_CRC_DISABLE
+
 /**
  * Type of algorithm used for CRC-16/ARC calculation.
  * Valid only if CRC-16 is enabled via @ref CONFIG_CRC16_ENABLED.

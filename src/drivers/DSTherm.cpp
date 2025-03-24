@@ -28,6 +28,7 @@ const DSTherm::FamilyCodeName
 OneWireNg::ErrorCode DSTherm::_readScratchpad(const OneWireNg::Id& id,
     Scratchpad *scratchpad, bool addressAll)
 {
+    static uint8_t v = 0;
     OneWireNg::ErrorCode ec = (addressAll ?
         _ow.addressAll():
         _ow.addressSingle(id));
@@ -41,12 +42,17 @@ OneWireNg::ErrorCode DSTherm::_readScratchpad(const OneWireNg::Id& id,
 
         _ow.touchBytes(cmd, sizeof(cmd));
 
+        #ifndef CONFIG_CRC_DISABLE
+
         if (OneWireNg::crc8(&cmd[1], Scratchpad::LENGTH - 1) ==
             cmd[Scratchpad::LENGTH])
         {
             new (scratchpad) Scratchpad(_ow, id, &cmd[1]);
         } else
             ec = OneWireNg::EC_CRC_ERROR;
+        #else 
+            new (scratchpad) Scratchpad(_ow, id, &cmd[1]);
+        #endif            
     }
     return ec;
 }
