@@ -36,7 +36,7 @@ public:
      * In this case the GPIO servers as a voltage source for connected slaves
      * working in parasite powering configuration.
      *
-     * @param pin Arduino GPIO pin definition used for bit-banging 1-wire bus.
+     * @param pinDef CH32V pin definition used for bit-banging 1-wire bus.
      * @param pullUp If @c true configure internal pull-up resistor for the bus.
      */
     OneWireNg_CH32V(const CH32VPin &pinDef, bool pullUp)
@@ -55,15 +55,15 @@ public:
      * feasible if the GPIO is unable to provide sufficient power for
      * connected slaves working in parasite powering configuration.
      *
-     * @param pin Arduino GPIO pin number used for bit-banging 1-wire bus.
-     * @param pwrCtrlPin Arduino GPIO pin number controlling the switching
+     * @param pin CH32V pin definition used for bit-banging 1-wire bus.
+     * @param pwrCtrlPin CH32V pin definition controlling the switching
      *     transistor.
      * @param pullUp If @c true configure internal pull-up resistor for the bus.
      */
-    OneWireNg_ArduinoSTM32(unsigned pin, unsigned pwrCtrlPin, bool pullUp)
+    OneWireNg_CH32V(const CH32VPin &pinDef, const CH32VPin &pwrCtrlPinDef, bool pullUp)
     {
-        initDtaGpio(pin, pullUp);
-        initPwrCtrlGpio(pwrCtrlPin);
+        initDtaGpio(pinDef, pullUp);
+        initPwrCtrlGpio(pwrCtrlPinDef);
     }
 #endif
 
@@ -75,29 +75,37 @@ protected:
 
     TIME_CRITICAL void setDtaGpioAsInput()
     {
-        setPinMode(_isPullUp ? GPIO_Mode_IPU : GPIO_Mode_IN_FLOATING);
+        setPinMode(_isPullUp ? GPIO_Mode_IPU : GPIO_Mode_IN_FLOATING, _dtaGpio);
     }
 
 #if CONFIG_PWR_CTRL_ENABLED
+
+    TIME_CRITICAL void writeGpioOut(int state, const CH32VPin &pinDef)
+    {
+        GPIO_WriteBit(pinDef.gpioDef, pinDef.gpioPin, state ? BitAction::Bit_SET : BitAction::Bit_RESET);
+    }
+
+    TIME_CRITICAL void setGpioAsOutput(int state, const CH32VPin &pinDef)
+    {
+        writeGpioOut(state, pinDef);
+        setPinMode(GPIO_Mode_Out_PP, pinDef);
+    }
+
     TIME_CRITICAL void writeGpioOut(int state, GpioType gpio)
     {
         if (gpio == GPIO_DTA) {
-            digitalWriteFast(_dtaGpio.pinName, state);
+            writeGpioOut(state, _dtaGpio);
         } else {
-            digitalWriteFast(_pwrCtrlGpio.pinName, state);
+            writeGpioOut(state, _pwrCtrlGpio);            
         }
     }
 
     TIME_CRITICAL void setGpioAsOutput(int state, GpioType gpio)
     {
         if (gpio == GPIO_DTA) {
-            digitalWriteFast(_dtaGpio.pinName, state);
-            LL_GPIO_SetPinMode(
-                _dtaGpio.gpio, _dtaGpio.ll_pin, LL_GPIO_MODE_OUTPUT);
+            setGpioAsOutput(state, _dtaGpio);
         } else {
-            digitalWriteFast(_pwrCtrlGpio.pinName, state);
-            LL_GPIO_SetPinMode(
-                _pwrCtrlGpio.gpio, _pwrCtrlGpio.ll_pin, LL_GPIO_MODE_OUTPUT);
+            setGpioAsOutput(state, _pwrCtrlGpio);
         }
     }
 #else
@@ -109,22 +117,18 @@ protected:
     TIME_CRITICAL void setGpioAsOutput(int state)
     {
         writeGpioOut(state);
-        setPinMode(GPIO_Mode_Out_PP);
-        writeGpioOut(state);
+        setPinMode(GPIO_Mode_Out_PP, _dtaGpio);
     }
 #endif /* CONFIG_PWR_CTRL_ENABLED */
 
 #if CONFIG_OVERDRIVE_ENABLED
     TIME_CRITICAL int touch1Overdrive()
     {
-        digitalWriteFast(_dtaGpio.pinName, 0);
-        LL_GPIO_SetPinMode(_dtaGpio.gpio, _dtaGpio.ll_pin, LL_GPIO_MODE_OUTPUT);
-
+        GPIO_WriteBit(_dtaGpio.gpioDef, _dtaGpio.gpioPin, BitAction::Bit_RESET);
         /* speed up low-to-high transition */
-        digitalWriteFast(_dtaGpio.pinName, 1);
-        LL_GPIO_SetPinMode(_dtaGpio.gpio, _dtaGpio.ll_pin, LL_GPIO_MODE_INPUT);
-
-        return (digitalReadFast(_dtaGpio.pinName) == LOW ? 0 : 1);
+        GPIO_WriteBit(_dtaGpio.gpioDef, _dtaGpio.gpioPin, BitAction::Bit_SET);
+        setPinMode(GPIO_Mode_IN_FLOATING, _dtaGpio);
+        return readDtaGpioIn();
     }
 #endif
 
@@ -141,32 +145,24 @@ protected:
         RCC_APB2PeriphClockCmd(_dtaGpio.busId, ENABLE);
     }
 
-    void setPinMode(GPIOMode_TypeDef gpioMode) {
+    void setPinMode(GPIOMode_TypeDef gpioMode, const CH32VPin &pinDef) {
         GPIO_InitTypeDef  GPIO_InitStructure;
-        GPIO_InitStructure.GPIO_Pin = _dtaGpio.gpioPin;
+        GPIO_InitStructure.GPIO_Pin = pinDef.gpioPin;
         GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
         GPIO_InitStructure.GPIO_Mode = gpioMode;
-        GPIO_Init(_dtaGpio.gpioDef, &GPIO_InitStructure);    
+        GPIO_Init(pinDef.gpioDef, &GPIO_InitStructure);    
     }
 
 #if CONFIG_PWR_CTRL_ENABLED
-    void initPwrCtrlGpio(unsigned pin)
+    void initPwrCtrlGpio( const CH32VPin &pwrCtrlPinDef)
     {
-        _pwrCtrlGpio.pinName = digitalPinToPinName(pin);
-        assert(_pwrCtrlGpio.pinName != NC);
-
-        _pwrCtrlGpio.gpio = GPIOPort[STM_PORT(_pwrCtrlGpio.pinName)];
-        _pwrCtrlGpio.ll_pin = STM_LL_GPIO_PIN(_pwrCtrlGpio.pinName);
-
-        pinMode(pin, OUTPUT);
+        _pwrCtrlGpio = pwrCtrlPinDef;
+        setPinMode(GPIO_Mode_Out_PP, _pwrCtrlGpio);
         setupPwrCtrlGpio(true);
     }
 
-    struct {
-        PinName pinName;
-        GPIO_TypeDef *gpio;
-        uint32_t ll_pin;
-    } _pwrCtrlGpio;
+    CH32VPin _pwrCtrlGpio;
+
 #endif
 
     CH32VPin _dtaGpio;

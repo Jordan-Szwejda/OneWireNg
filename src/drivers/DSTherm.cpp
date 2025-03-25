@@ -28,7 +28,6 @@ const DSTherm::FamilyCodeName
 OneWireNg::ErrorCode DSTherm::_readScratchpad(const OneWireNg::Id& id,
     Scratchpad *scratchpad, bool addressAll)
 {
-    static uint8_t v = 0;
     OneWireNg::ErrorCode ec = (addressAll ?
         _ow.addressAll():
         _ow.addressSingle(id));
