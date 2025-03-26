@@ -158,6 +158,9 @@
 #  define CONFIG_CRC16_ENABLED 0
 # endif
 
+/**
+ * Disable checksum checks for ingenuine chips if they generate different checksums.
+ */
 #define CONFIG_CRC_DISABLE
 
 /**
