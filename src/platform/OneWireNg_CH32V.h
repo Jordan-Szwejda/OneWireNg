@@ -46,7 +46,7 @@ public:
 
 #if CONFIG_PWR_CTRL_ENABLED
     /**
-     * OneWireNg 1-wire service for Arduino STM32 platform.
+     * OneWireNg 1-wire service for CH32V platform.
      *
      * Bus powering is supported via a switching transistor providing
      * the power to the bus and controlled by a dedicated GPIO (@see
